@@ -214,7 +214,8 @@ function showResult(month, day, period) {
   if (!result) return;
 
   const slotIndex = mapping.indexOf(result);
-  const spirit = selectSpiritPokemon(result.pokemon, slotIndex);
+  const defaultSpirit = selectSpiritPokemon(result.pokemon, slotIndex);
+  let currentSpirit = defaultSpirit;
   const resultDiv = document.getElementById('result');
   resultDiv.classList.remove('hidden');
 
@@ -226,104 +227,126 @@ function showResult(month, day, period) {
     ? `background: ${TYPE_COLORS[result.types[0]]?.bg || '#888'}`
     : `background: ${typeGradient(result.types)}`;
 
-  const shareText = spirit
-    ? `I'm ${formatTypes(result.types)} — my spirit Pokémon is ${capitalize(spirit.name)}! 🎂⚡`
-    : `I'm ${formatTypes(result.types)}! 🎂⚡`;
+  function getShareText(spirit) {
+    return spirit
+      ? `I'm ${formatTypes(result.types)} — my spirit Pokémon is ${capitalize(spirit.name)}! 🎂⚡`
+      : `I'm ${formatTypes(result.types)}! 🎂⚡`;
+  }
 
-  resultDiv.innerHTML = `
-    <div class="result-card" style="${typeStyle}">
-      <div class="result-header">
-        <h2>${result.label}</h2>
-        <div class="result-types">
-          ${result.types.map(t => `<span class="type-badge" style="background:${TYPE_COLORS[t]?.bg};color:${TYPE_COLORS[t]?.text}">${capitalize(t)}</span>`).join('')}
-        </div>
-      </div>
+  function renderCard(spirit) {
+    currentSpirit = spirit;
+    const isDefault = spirit && defaultSpirit && spirit.id === defaultSpirit.id;
 
-      ${spirit ? `
-        <div class="spirit-section">
-          <div class="spirit-image">
-            <img src="${spirit.officialArtwork || spirit.sprite}" alt="${spirit.name}" />
-          </div>
-          <div class="spirit-info">
-            <h3>Your Spirit Pokémon</h3>
-            <p class="spirit-name">${capitalize(spirit.name)}</p>
-            <p class="spirit-detail">#${spirit.id} · ${spirit.generation?.replace('generation-', 'Gen ').toUpperCase()}</p>
-            <div class="spirit-actions">
-              <button class="avatar-btn" id="download-avatar">Save as Profile Pic</button>
-              <button class="avatar-btn share-btn" id="share-btn">Share Result</button>
-            </div>
+    resultDiv.innerHTML = `
+      <div class="result-card" style="${typeStyle}">
+        <div class="result-header">
+          <h2>${result.label}</h2>
+          <div class="result-types">
+            ${result.types.map(t => `<span class="type-badge" style="background:${TYPE_COLORS[t]?.bg};color:${TYPE_COLORS[t]?.text}">${capitalize(t)}</span>`).join('')}
           </div>
         </div>
-      ` : ''}
 
-      <div class="gen-provenance">
-        <span class="gen-provenance-icon">📡</span>
-        <span class="gen-provenance-label">${isAllGens ? 'Pokédex set to: All Regions' : 'Pokédex set to:'}</span>
-        ${!isAllGens ? userSelectedGens.map(g => `<span class="gen-provenance-tag">${g.label} <span class="gen-provenance-region">${g.subtitle.split('(')[0].trim()}</span></span>`).join('') : ''}
-      </div>
-
-      <div class="roster-section">
-        <h3>All ${formatTypes(result.types)} Pokémon (${result.pokemon.length})</h3>
-        <div class="roster-grid">
-          ${result.pokemon.map(p => `
-            <div class="roster-item ${spirit && p.id === spirit.id ? 'spirit-highlight' : ''}" title="${capitalize(p.name)} #${p.id}">
-              <img src="${p.sprite}" alt="${p.name}" loading="lazy" />
-              <span>${capitalize(p.name)}</span>
+        ${spirit ? `
+          <div class="spirit-section">
+            <div class="spirit-image">
+              <img src="${spirit.officialArtwork || spirit.sprite}" alt="${spirit.name}" />
             </div>
-          `).join('')}
+            <div class="spirit-info">
+              <h3>Your Spirit Pokémon</h3>
+              <p class="spirit-name">${capitalize(spirit.name)}</p>
+              <p class="spirit-detail">#${spirit.id} · ${spirit.generation?.replace('generation-', 'Gen ').toUpperCase()}${!isDefault ? ' · <em>Custom pick</em>' : ''}</p>
+              <div class="spirit-actions">
+                <button class="avatar-btn" id="download-avatar">Save as Profile Pic</button>
+                <button class="avatar-btn share-btn" id="share-btn">Share Result</button>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="gen-provenance">
+          <span class="gen-provenance-icon">📡</span>
+          <span class="gen-provenance-label">${isAllGens ? 'Pokédex set to: All Regions' : 'Pokédex set to:'}</span>
+          ${!isAllGens ? userSelectedGens.map(g => `<span class="gen-provenance-tag">${g.label} <span class="gen-provenance-region">${g.subtitle.split('(')[0].trim()}</span></span>`).join('') : ''}
+        </div>
+
+        <div class="roster-section">
+          <h3>All ${formatTypes(result.types)} Pokémon (${result.pokemon.length}) — <span class="roster-hint">tap to choose</span></h3>
+          <div class="roster-grid">
+            ${result.pokemon.map(p => `
+              <div class="roster-item ${spirit && p.id === spirit.id ? 'spirit-highlight' : ''} ${defaultSpirit && p.id === defaultSpirit.id ? 'spirit-default' : ''}" 
+                   title="${capitalize(p.name)} #${p.id}" data-pokemon-id="${p.id}">
+                <img src="${p.sprite}" alt="${p.name}" loading="lazy" />
+                <span>${capitalize(p.name)}</span>
+              </div>
+            `).join('')}
+          </div>
         </div>
       </div>
-    </div>
-  `;
+    `;
 
-  resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    wireUpActions(spirit);
+  }
 
-  // Wire up avatar download button
-  const avatarBtn = document.getElementById('download-avatar');
-  if (avatarBtn && spirit) {
-    avatarBtn.addEventListener('click', () => {
-      avatarBtn.textContent = 'Generating...';
-      avatarBtn.disabled = true;
-      downloadAvatar(spirit, result.types).then(() => {
-        avatarBtn.textContent = 'Saved!';
-        setTimeout(() => {
+  function wireUpActions(spirit) {
+    // Avatar download
+    const avatarBtn = document.getElementById('download-avatar');
+    if (avatarBtn && spirit) {
+      avatarBtn.addEventListener('click', () => {
+        avatarBtn.textContent = 'Generating...';
+        avatarBtn.disabled = true;
+        downloadAvatar(spirit, result.types).then(() => {
+          avatarBtn.textContent = 'Saved!';
+          setTimeout(() => {
+            avatarBtn.textContent = 'Save as Profile Pic';
+            avatarBtn.disabled = false;
+          }, 2000);
+        }).catch(() => {
           avatarBtn.textContent = 'Save as Profile Pic';
           avatarBtn.disabled = false;
-        }, 2000);
-      }).catch(() => {
-        avatarBtn.textContent = 'Save as Profile Pic';
-        avatarBtn.disabled = false;
+        });
       });
-    });
+    }
+
+    // Share
+    const shareBtn = document.getElementById('share-btn');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', async () => {
+        const url = 'https://solrooster.github.io/TypeCast/';
+        const text = getShareText(spirit) + `\n\nFind yours: ${url}`;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: 'TypeCast — Pokémon Birthday Chart', text, url });
+          } catch (e) { /* user cancelled */ }
+        } else {
+          try {
+            await navigator.clipboard.writeText(text);
+            shareBtn.textContent = 'Copied!';
+            setTimeout(() => { shareBtn.textContent = 'Share Result'; }, 2000);
+          } catch (e) {
+            prompt('Copy your result:', text);
+          }
+        }
+      });
+    }
+
+    // Roster click → swap spirit Pokémon
+    const rosterGrid = resultDiv.querySelector('.roster-grid');
+    if (rosterGrid) {
+      rosterGrid.addEventListener('click', (e) => {
+        const item = e.target.closest('.roster-item');
+        if (!item) return;
+        const pokemonId = parseInt(item.dataset.pokemonId);
+        const picked = result.pokemon.find(p => p.id === pokemonId);
+        if (picked && (!currentSpirit || picked.id !== currentSpirit.id)) {
+          renderCard(picked);
+        }
+      });
+    }
   }
 
-  // Wire up share button
-  const shareBtn = document.getElementById('share-btn');
-  if (shareBtn) {
-    shareBtn.addEventListener('click', async () => {
-      const url = 'https://solrooster.github.io/TypeCast/';
-      const text = shareText + `\n\nFind yours: ${url}`;
-
-      if (navigator.share) {
-        // Native share sheet (mobile + some desktop)
-        try {
-          await navigator.share({ title: 'TypeCast — Pokémon Birthday Chart', text, url });
-        } catch (e) {
-          // User cancelled — that's fine
-        }
-      } else {
-        // Fallback: copy to clipboard
-        try {
-          await navigator.clipboard.writeText(text);
-          shareBtn.textContent = 'Copied!';
-          setTimeout(() => { shareBtn.textContent = 'Share Result'; }, 2000);
-        } catch (e) {
-          // Last resort: prompt
-          prompt('Copy your result:', text);
-        }
-      }
-    });
-  }
+  renderCard(defaultSpirit);
+  resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function buildChart() {

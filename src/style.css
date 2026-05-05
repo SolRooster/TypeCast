@@ -454,6 +454,13 @@ body {
   opacity: 0.9;
 }
 
+.roster-hint {
+  font-weight: 400;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  font-style: italic;
+}
+
 .roster-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
@@ -469,12 +476,14 @@ body {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   transition: all 0.2s;
-  cursor: default;
+  cursor: pointer;
+  border: 2px solid transparent;
 }
 
 .roster-item:hover {
   background: rgba(255, 255, 255, 0.18);
   transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .roster-item img {
@@ -493,6 +502,10 @@ body {
 .roster-item.spirit-highlight {
   background: rgba(247, 208, 44, 0.25);
   border: 2px solid var(--accent);
+}
+
+.roster-item.spirit-default:not(.spirit-highlight) {
+  border: 2px dashed rgba(247, 208, 44, 0.35);
 }
 
 /* ===== Chart Section ===== */
