@@ -218,9 +218,17 @@ function showResult(month, day, period) {
   const resultDiv = document.getElementById('result');
   resultDiv.classList.remove('hidden');
 
+  // Figure out which generations are represented in this type combo's roster
+  const genSet = new Set(result.pokemon.map(p => p.generation));
+  const activeGens = GENERATIONS.filter(g => genSet.has(g.key));
+
   const typeStyle = result.types.length === 1
     ? `background: ${TYPE_COLORS[result.types[0]]?.bg || '#888'}`
     : `background: ${typeGradient(result.types)}`;
+
+  const shareText = spirit
+    ? `I'm ${formatTypes(result.types)} — my spirit Pokémon is ${capitalize(spirit.name)}! 🎂⚡`
+    : `I'm ${formatTypes(result.types)}! 🎂⚡`;
 
   resultDiv.innerHTML = `
     <div class="result-card" style="${typeStyle}">
@@ -240,10 +248,18 @@ function showResult(month, day, period) {
             <h3>Your Spirit Pokémon</h3>
             <p class="spirit-name">${capitalize(spirit.name)}</p>
             <p class="spirit-detail">#${spirit.id} · BST ${spirit.bst} · ${spirit.generation?.replace('generation-', 'Gen ').toUpperCase()}</p>
-            <button class="avatar-btn" id="download-avatar">Save as Profile Pic</button>
+            <div class="spirit-actions">
+              <button class="avatar-btn" id="download-avatar">Save as Profile Pic</button>
+              <button class="avatar-btn share-btn" id="share-btn">Share Result</button>
+            </div>
           </div>
         </div>
       ` : ''}
+
+      <div class="gen-provenance">
+        <span class="gen-provenance-label">Found in:</span>
+        ${activeGens.map(g => `<span class="gen-provenance-tag">${g.label} <span class="gen-provenance-region">${g.subtitle.split('(')[0].trim()}</span></span>`).join('')}
+      </div>
 
       <div class="roster-section">
         <h3>All ${formatTypes(result.types)} Pokémon (${result.pokemon.length})</h3>
@@ -277,6 +293,34 @@ function showResult(month, day, period) {
         avatarBtn.textContent = 'Save as Profile Pic';
         avatarBtn.disabled = false;
       });
+    });
+  }
+
+  // Wire up share button
+  const shareBtn = document.getElementById('share-btn');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const url = 'https://solrooster.github.io/TypeCast/';
+      const text = shareText + `\n\nFind yours: ${url}`;
+
+      if (navigator.share) {
+        // Native share sheet (mobile + some desktop)
+        try {
+          await navigator.share({ title: 'TypeCast — Pokémon Birthday Chart', text, url });
+        } catch (e) {
+          // User cancelled — that's fine
+        }
+      } else {
+        // Fallback: copy to clipboard
+        try {
+          await navigator.clipboard.writeText(text);
+          shareBtn.textContent = 'Copied!';
+          setTimeout(() => { shareBtn.textContent = 'Share Result'; }, 2000);
+        } catch (e) {
+          // Last resort: prompt
+          prompt('Copy your result:', text);
+        }
+      }
     });
   }
 }

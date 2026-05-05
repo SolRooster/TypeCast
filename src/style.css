@@ -389,6 +389,58 @@ body {
   cursor: wait;
 }
 
+.spirit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.spirit-actions .avatar-btn {
+  margin-top: 0;
+}
+
+.share-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ===== Generation Provenance ===== */
+.gen-provenance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.gen-provenance-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.6;
+  margin-right: 4px;
+}
+
+.gen-provenance-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.gen-provenance-region {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 /* ===== Roster ===== */
 .roster-section h3 {
   font-size: 1rem;
