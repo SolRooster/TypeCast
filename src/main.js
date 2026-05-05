@@ -218,9 +218,9 @@ function showResult(month, day, period) {
   const resultDiv = document.getElementById('result');
   resultDiv.classList.remove('hidden');
 
-  // Figure out which generations are represented in this type combo's roster
-  const genSet = new Set(result.pokemon.map(p => p.generation));
-  const activeGens = GENERATIONS.filter(g => genSet.has(g.key));
+  // Build the user's active filter context
+  const userSelectedGens = GENERATIONS.filter(g => enabledGens.has(g.key));
+  const isAllGens = userSelectedGens.length === GENERATIONS.length;
 
   const typeStyle = result.types.length === 1
     ? `background: ${TYPE_COLORS[result.types[0]]?.bg || '#888'}`
@@ -247,7 +247,7 @@ function showResult(month, day, period) {
           <div class="spirit-info">
             <h3>Your Spirit Pokémon</h3>
             <p class="spirit-name">${capitalize(spirit.name)}</p>
-            <p class="spirit-detail">#${spirit.id} · BST ${spirit.bst} · ${spirit.generation?.replace('generation-', 'Gen ').toUpperCase()}</p>
+            <p class="spirit-detail">#${spirit.id} · ${spirit.generation?.replace('generation-', 'Gen ').toUpperCase()}</p>
             <div class="spirit-actions">
               <button class="avatar-btn" id="download-avatar">Save as Profile Pic</button>
               <button class="avatar-btn share-btn" id="share-btn">Share Result</button>
@@ -257,8 +257,9 @@ function showResult(month, day, period) {
       ` : ''}
 
       <div class="gen-provenance">
-        <span class="gen-provenance-label">Found in:</span>
-        ${activeGens.map(g => `<span class="gen-provenance-tag">${g.label} <span class="gen-provenance-region">${g.subtitle.split('(')[0].trim()}</span></span>`).join('')}
+        <span class="gen-provenance-icon">📡</span>
+        <span class="gen-provenance-label">${isAllGens ? 'Pokédex set to: All Regions' : 'Pokédex set to:'}</span>
+        ${!isAllGens ? userSelectedGens.map(g => `<span class="gen-provenance-tag">${g.label} <span class="gen-provenance-region">${g.subtitle.split('(')[0].trim()}</span></span>`).join('') : ''}
       </div>
 
       <div class="roster-section">

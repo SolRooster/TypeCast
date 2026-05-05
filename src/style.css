@@ -405,24 +405,30 @@ body {
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-/* ===== Generation Provenance ===== */
+/* ===== Pokédex Scope ===== */
 .gen-provenance {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 12px 16px;
+  padding: 10px 16px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   margin-bottom: 20px;
+}
+
+.gen-provenance-icon {
+  font-size: 0.85rem;
+  margin-right: 2px;
 }
 
 .gen-provenance-label {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  opacity: 0.6;
+  opacity: 0.7;
   margin-right: 4px;
+  font-style: italic;
 }
 
 .gen-provenance-tag {
