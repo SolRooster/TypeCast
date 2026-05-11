@@ -42,10 +42,11 @@ const SPECIAL_DAY_ADJUSTMENTS = {
 };
 
 /**
- * Generate all 732 birthday slots (366 days × AM/PM)
- * with relative birth frequency weights.
+ * Generate birthday slots with relative birth frequency weights.
+ * @param {boolean} useAmPm — if true, generates 732 slots (366 days × AM/PM).
+ *                            If false, generates 366 slots (one per day).
  */
-export function generateBirthdaySlots() {
+export function generateBirthdaySlots(useAmPm = true) {
   const slots = [];
   const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const monthNames = [
@@ -55,20 +56,31 @@ export function generateBirthdaySlots() {
 
   for (let m = 0; m < 12; m++) {
     for (let d = 1; d <= daysInMonth[m]; d++) {
-      for (const period of ['AM', 'PM']) {
-        const monthWeight = MONTHLY_WEIGHTS[m + 1];
-        const specialKey = `${m + 1}-${d}`;
-        const dayAdj = SPECIAL_DAY_ADJUSTMENTS[specialKey] || 1.0;
-        // AM births are slightly less common than PM births (about 45/55 split)
-        const periodAdj = period === 'AM' ? 0.92 : 1.08;
+      const monthWeight = MONTHLY_WEIGHTS[m + 1];
+      const specialKey = `${m + 1}-${d}`;
+      const dayAdj = SPECIAL_DAY_ADJUSTMENTS[specialKey] || 1.0;
 
+      if (useAmPm) {
+        for (const period of ['AM', 'PM']) {
+          // AM births are slightly less common than PM births (about 45/55 split)
+          const periodAdj = period === 'AM' ? 0.92 : 1.08;
+          slots.push({
+            month: m + 1,
+            monthName: monthNames[m],
+            day: d,
+            period,
+            label: `${monthNames[m]} ${d}, ${period}`,
+            weight: monthWeight * dayAdj * periodAdj,
+          });
+        }
+      } else {
         slots.push({
           month: m + 1,
           monthName: monthNames[m],
           day: d,
-          period,
-          label: `${monthNames[m]} ${d}, ${period}`,
-          weight: monthWeight * dayAdj * periodAdj,
+          period: null,
+          label: `${monthNames[m]} ${d}`,
+          weight: monthWeight * dayAdj,
         });
       }
     }
@@ -131,7 +143,7 @@ export function filterTypeCombos(typeCombos, enabledGens) {
  * 3. Map them so common types go to common birthdays, rare types to rare birthdays
  * 4. Use deterministic shuffle within prevalence tiers for variety
  */
-export function mapBirthdaysToTypes(typeCombos, seed = 42) {
+export function mapBirthdaysToTypes(typeCombos, seed = 42, useAmPm = true) {
   const rng = mulberry32(seed);
 
   // Get all type combos sorted by count (descending)
@@ -146,10 +158,10 @@ export function mapBirthdaysToTypes(typeCombos, seed = 42) {
   comboEntries.sort((a, b) => b.count - a.count);
 
   // Generate and sort birthday slots by weight descending (most common first)
-  const slots = generateBirthdaySlots();
+  const slots = generateBirthdaySlots(useAmPm);
   slots.sort((a, b) => b.weight - a.weight);
 
-  // We have 732 slots and ~154 type combos.
+  // We have 732 (or 366) slots and ~154 type combos.
   // Each combo should appear proportionally to its prevalence.
   const totalPokemon = comboEntries.reduce((sum, c) => sum + c.count, 0);
   const totalSlots = slots.length;
@@ -160,7 +172,7 @@ export function mapBirthdaysToTypes(typeCombos, seed = 42) {
     targetSlots: Math.max(1, Math.round((combo.count / totalPokemon) * totalSlots)),
   }));
 
-  // Adjust to fit exactly 732 slots
+  // Adjust to fit exactly the target slot count
   let currentTotal = assignedSlots.reduce((sum, c) => sum + c.targetSlots, 0);
   while (currentTotal !== totalSlots) {
     if (currentTotal > totalSlots) {
@@ -257,10 +269,12 @@ export function selectSpiritPokemon(pokemon, slotIndex, seed = 42) {
 }
 
 /**
- * Look up a specific birthday.
+ * Look up a specific birthday. Pass period=null for no-AM/PM mode.
  */
 export function lookupBirthday(mapping, month, day, period) {
-  return mapping.find(
-    s => s.month === month && s.day === day && s.period === period.toUpperCase()
-  );
+  return mapping.find(s => {
+    if (s.month !== month || s.day !== day) return false;
+    if (s.period === null && (period === null || period === undefined)) return true;
+    return period && s.period === period.toUpperCase();
+  });
 }

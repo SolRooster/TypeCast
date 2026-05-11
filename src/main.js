@@ -6,11 +6,13 @@ import './style.css';
 
 // Track enabled generations — all on by default
 let enabledGens = new Set(GENERATIONS.map(g => g.key));
+// AM/PM mode — off by default since most folks don't know their birth time
+let useAmPm = false;
 let mapping = rebuildMapping();
 
 function rebuildMapping() {
   const filtered = filterTypeCombos(pokemonData.typeCombos, enabledGens);
-  return mapBirthdaysToTypes(filtered);
+  return mapBirthdaysToTypes(filtered, 42, useAmPm);
 }
 
 function getActiveStats() {
@@ -74,7 +76,7 @@ function init() {
                 ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
               </select>
             </div>
-            <div class="field">
+            <div class="field" id="period-field" style="display:none;">
               <label for="period">Time</label>
               <select id="period">
                 <option value="AM">AM (Midnight–Noon)</option>
@@ -83,6 +85,10 @@ function init() {
             </div>
             <button id="lookup-btn" class="lookup-btn">Reveal My Type!</button>
           </div>
+          <label class="ampm-toggle">
+            <input type="checkbox" id="ampm-toggle" />
+            <span class="ampm-toggle-text">Purist mode — split by AM/PM (original chart style)</span>
+          </label>
         </div>
       </div>
 
@@ -105,6 +111,7 @@ function init() {
 
   setupLookup();
   setupGenFilter();
+  setupAmPmToggle();
   updateGenStats();
   buildChart();
 }
@@ -119,7 +126,7 @@ function setupLookup() {
   btn.addEventListener('click', () => {
     const month = parseInt(monthSelect.value);
     const day = parseInt(daySelect.value);
-    const period = document.getElementById('period').value;
+    const period = useAmPm ? document.getElementById('period').value : null;
     showResult(month, day, period);
   });
 
@@ -129,6 +136,23 @@ function setupLookup() {
   updateDayOptions();
   daySelect.value = now.getDate();
   document.getElementById('period').value = now.getHours() < 12 ? 'AM' : 'PM';
+}
+
+function setupAmPmToggle() {
+  const toggle = document.getElementById('ampm-toggle');
+  toggle.checked = useAmPm;
+  document.getElementById('period-field').style.display = useAmPm ? '' : 'none';
+
+  toggle.addEventListener('change', () => {
+    useAmPm = toggle.checked;
+    document.getElementById('period-field').style.display = useAmPm ? '' : 'none';
+    mapping = rebuildMapping();
+    buildChart();
+    // Clear any existing result since the mapping changed
+    const resultDiv = document.getElementById('result');
+    resultDiv.classList.add('hidden');
+    resultDiv.innerHTML = '';
+  });
 }
 
 function updateDayOptions() {
@@ -361,13 +385,20 @@ function buildChart() {
   let bodyRows = '<tbody>';
   const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
+  // In no-AM/PM mode, render one row per month. In AM/PM mode, render two (AM/PM).
+  const periodsPerMonth = useAmPm ? ['AM', 'PM'] : [null];
+
   for (let m = 1; m <= 12; m++) {
-    for (const period of ['AM', 'PM']) {
+    for (let pi = 0; pi < periodsPerMonth.length; pi++) {
+      const period = periodsPerMonth[pi];
       bodyRows += `<tr>`;
-      if (period === 'AM') {
-        bodyRows += `<td class="month-label" rowspan="2">${MONTH_NAMES[m - 1]}</td>`;
+      if (pi === 0) {
+        const rowspan = useAmPm ? ' rowspan="2"' : '';
+        bodyRows += `<td class="month-label"${rowspan}>${MONTH_NAMES[m - 1]}</td>`;
       }
-      bodyRows += `<td class="period-label">${period.toLowerCase()}</td>`;
+      if (useAmPm) {
+        bodyRows += `<td class="period-label">${period.toLowerCase()}</td>`;
+      }
 
       for (let d = 1; d <= 31; d++) {
         if (d > daysInMonth[m - 1]) {
@@ -396,7 +427,7 @@ function buildChart() {
         bodyRows += `
           <td class="chart-cell" style="${cellStyle}" 
               title="${entry.label}: ${formatTypes(entry.types)}${spirit ? ' — ' + capitalize(spirit.name) : ''}"
-              data-month="${m}" data-day="${d}" data-period="${period}">
+              data-month="${m}" data-day="${d}"${period ? ` data-period="${period}"` : ''}>
             <div class="cell-types">${entry.types.map(t => capitalize(t)).join('\n')}</div>
           </td>`;
       }
@@ -413,12 +444,14 @@ function buildChart() {
     if (!cell) return;
     const month = parseInt(cell.dataset.month);
     const day = parseInt(cell.dataset.day);
-    const period = cell.dataset.period;
+    const period = cell.dataset.period || null;
 
     document.getElementById('month').value = month;
     updateDayOptions();
     document.getElementById('day').value = day;
-    document.getElementById('period').value = period;
+    if (period) {
+      document.getElementById('period').value = period;
+    }
     showResult(month, day, period);
   });
 }
